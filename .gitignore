@@ -1,2 +1,4 @@
 goserve.exe
+*.exe
+*.exe~
 goserve
