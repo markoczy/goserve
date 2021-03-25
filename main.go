@@ -49,19 +49,11 @@ func main() {
 
 	// Handle HTTP: 1. Log, 2. Serve file
 	if mode == modeFile {
+		log.Printf("Serving folder \"%s\" on \"%s:%d\"\n", folder, host, port)
 		server = http.FileServer(http.Dir(folder))
 	} else {
 		server = http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			d, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				log.Println("ERROR while reading Body:", err.Error())
-			}
-			log.Println("*** Body:")
-			body := "<empty>"
-			if len(d) > 0 {
-				body = string(d)
-			}
-			log.Printf("***   %s\n", body)
+			log.Printf("Running API Debugger on \"%s:%d\"\n", host, port)
 		})
 	}
 	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,12 +63,20 @@ func main() {
 		for k, v := range r.Header {
 			log.Printf("***   %s : %s", k, strings.Join(v, " "))
 		}
+		d, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Println("ERROR while reading Body:", err.Error())
+		}
+		log.Println("*** Body:")
+		body := "<empty>"
+		if len(d) > 0 {
+			body = string(d)
+		}
+		log.Printf("***   %s\n", body)
 		enableCors(&w)
 		server.ServeHTTP(w, r)
 		log.Println("********************* END REQUEST ***************************")
 	}))
-
-	log.Printf("Serving folder \"%s\" on \"%s:%d\"\n", folder, host, port)
 
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
 	if err != nil {
