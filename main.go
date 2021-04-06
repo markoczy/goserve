@@ -6,15 +6,19 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 var (
-	host   string
-	port   int
-	folder string
-	server http.Handler
-	mode   serverMode
+	host    string
+	port    int
+	folder  string
+	server  http.Handler
+	mode    serverMode
+	https   bool
+	certKey string
+	cert    string
 )
 
 type serverMode int
@@ -26,9 +30,12 @@ const (
 
 func initFlags() {
 	hostPtr := flag.String("host", "localhost", "the designated host")
-	portPtr := flag.Int("port", 7890, "designated port")
+	portPtr := flag.String("port", "<default>", "designated port (must be int or '<default>')")
 	folderPtr := flag.String("folder", ".", "the path to serve")
 	modePtr := flag.String("mode", "fileserver", "The server mode ('fileserver', 'apitrace'")
+	httpsPtr := flag.Bool("tls", false, "Serve as HTTPS (i.e. TLS)")
+	certPtr := flag.String("cert", "server.crt", "Path to TLS Certificate")
+	certKeyPtr := flag.String("cert-key", "server.key", "Path to TLS Certificate key")
 
 	flag.Parse()
 
@@ -41,7 +48,20 @@ func initFlags() {
 		flag.Usage()
 		panic("Invalid Mode selected: " + *modePtr)
 	}
-	host, port, folder = *hostPtr, *portPtr, *folderPtr
+	if *portPtr != "<default>" {
+		var err error
+		port, err = strconv.Atoi(*portPtr)
+		if err != nil {
+			flag.Usage()
+			panic("Port could not be parsed, please provide int value or '<default>''")
+		}
+	} else {
+		port = 80
+		if *httpsPtr {
+			port = 443
+		}
+	}
+	host, folder, https, cert, certKey = *hostPtr, *folderPtr, *httpsPtr, *certPtr, *certKeyPtr
 }
 
 func main() {
@@ -63,6 +83,8 @@ func main() {
 		for k, v := range r.Header {
 			log.Printf("***   %s : %s", k, strings.Join(v, " "))
 		}
+		log.Printf("***   Referer : %s", r.Referer())
+
 		d, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println("ERROR while reading Body:", err.Error())
@@ -78,7 +100,13 @@ func main() {
 		log.Println("********************* END REQUEST ***************************")
 	}))
 
-	err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
+	var err error
+	if https {
+		err = http.ListenAndServeTLS(fmt.Sprintf("%s:%d", host, port), cert, certKey, nil)
+	} else {
+		err = http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
+
+	}
 	if err != nil {
 		panic(err)
 	}
