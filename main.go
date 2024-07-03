@@ -29,7 +29,7 @@ const (
 )
 
 func initFlags() {
-	hostPtr := flag.String("host", "localhost", "the designated host")
+	hostPtr := flag.String("host", "", "the designated host (can be empty)")
 	portPtr := flag.String("port", "<default>", "designated port (must be int or '<default>')")
 	folderPtr := flag.String("folder", ".", "the path to serve")
 	modePtr := flag.String("mode", "fileserver", "The server mode ('fileserver', 'apitrace'")
